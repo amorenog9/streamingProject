@@ -19,25 +19,37 @@
 package es.upm.dit
 
 import org.apache.flink.configuration.{ConfigConstants, Configuration}
+import org.apache.flink.streaming.api.datastream.DataStreamSource
 import org.apache.flink.streaming.api.environment.{LocalStreamEnvironment, StreamExecutionEnvironment}
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows
+import org.apache.flink.streaming.api.windowing.time.Time
 import utils.DemoStreamEnvironment
+import org.apache.flink.api.common.functions.{FilterFunction, MapFunction}
 
 object Job {
   def main(args: Array[String]) {
-    // set up the execution environment
-    val env: StreamExecutionEnvironment = DemoStreamEnvironment.env
-    val text = env.socketTextStream("localhost", 9094)
-    text
-      .print()
 
+    val hostname: String = "localhost"
+    val port: Int = 9095
+
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    val data = env.socketTextStream(hostname, port)
+
+    // set up the execution environment
+    //val env: StreamExecutionEnvironment = DemoStreamEnvironment.env
+    //val text = env.socketTextStream("localhost", 9092)
+
+    // val textApplied = text.flatMapWith {case (_, sequences) => sequences}
+
+    data.print()
 
     // The execute() method will wait for the job to finish and then return a JobExecutionResult,
     // this contains execution times and accumulator results.
     env.execute("SocketEventStreamer")
 
 
-
+// https://stackoverflow.com/questions/54985953/parsing-json-from-incoming-datastream-to-perform-simple-transformations-in-flink
 
 
   }
