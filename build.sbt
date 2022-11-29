@@ -12,7 +12,6 @@ organization := "es.upm.dit"
 ThisBuild / scalaVersion := "2.11.12"
 
 val flinkVersion = "1.12.1"
-val circeVersion = "0.14.1"
 
 
 val Dependencies = Seq(
