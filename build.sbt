@@ -22,13 +22,7 @@ val Dependencies = Seq(
   "org.apache.flink" %% "flink-streaming-scala" % flinkVersion,
   "org.apache.flink" %% "flink-connector-kafka" % flinkVersion,
   "org.apache.flink" % "flink-json" % flinkVersion,
-  //"ch.qos.logback" % "logback-classic" % "1.2.3"
-
-  // JSON libraries
-  // "com.google.code.gson" % "gson" % "2.8.6",
-  // https://mvnrepository.com/artifact/org.apache.flink/flink-connector-kafka-0.8
-  //  "org.apache.flink" %% "flink-connector-kafka-0.8" % "1.1.5",
-  //"org.json4s" %% "json4s-native" % "3.6.10"
+  //"ch.qos.logback" % "logback-classic" % "1.2.3",
 
 
   // Circe
