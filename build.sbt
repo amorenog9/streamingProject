@@ -11,18 +11,29 @@ organization := "es.upm.dit"
 
 ThisBuild / scalaVersion := "2.11.12"
 
-val flinkVersion = "1.14.0"
+val flinkVersion = "1.12.1"
 
 val flinkDependencies = Seq(
-  "org.apache.flink" %% "flink-runtime-web" % flinkVersion, //añadido para interfaz web
-  "org.apache.flink" %% "flink-clients" % flinkVersion % "compile", // cambiado a compile
-  "org.apache.flink" %% "flink-scala" % flinkVersion % "compile", // cambiado a compile
-  "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % "compile", // cambiado a compile
+  // flink libraries
+  "org.apache.flink" %% "flink-runtime-web" % flinkVersion, //interfaz web
+  "org.apache.flink" %% "flink-clients" % flinkVersion,
+  "org.apache.flink" %% "flink-scala" % flinkVersion,
+  "org.apache.flink" %% "flink-streaming-scala" % flinkVersion,
   "org.apache.flink" %% "flink-connector-kafka" % flinkVersion,
-  "org.apache.flink" % "flink-json" % flinkVersion,
+  "org.apache.flink" % "flink-json" % flinkVersion
+  //"ch.qos.logback" % "logback-classic" % "1.2.3"
 
-  "ch.qos.logback" % "logback-classic" % "1.2.3"
-) // unique % to avoid appending scala version
+  // JSON libraries
+  // "com.google.code.gson" % "gson" % "2.8.6",
+  // https://mvnrepository.com/artifact/org.apache.flink/flink-connector-kafka-0.8
+  //  "org.apache.flink" %% "flink-connector-kafka-0.8" % "1.1.5",
+  //"org.json4s" %% "json4s-native" % "3.6.10"
+
+)
+
+javacOptions ++= Seq("-target", "1.8")
+scalacOptions ++= Seq( "-target:jvm-1.8", "-language:postfixOps")
+
 
 lazy val root = (project in file(".")).
   settings(

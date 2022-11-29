@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ScalaCompilerConfiguration">
-    <profile name="sbt 1" modules="flink,flinkProject" />
+    <profile name="sbt 1" modules="flink" />
+    <profile name="sbt 2" modules="flinkProject">
+      <option name="postfixOps" value="true" />
+      <parameters>
+        <parameter value="-target:jvm-1.8" />
+      </parameters>
+    </profile>
   </component>
 </project>
