@@ -4,7 +4,7 @@ object struct {
 
   case class TrainEvent(
   EVENT_TYPE: String,
-  DATE_EVENT: String, // tengo que cambiarlo a fecha
+  DATE_EVENT: Long, // tengo que cambiarlo a fecha
   ID: String)
 
 }

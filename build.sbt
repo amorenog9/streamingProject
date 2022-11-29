@@ -12,15 +12,17 @@ organization := "es.upm.dit"
 ThisBuild / scalaVersion := "2.11.12"
 
 val flinkVersion = "1.12.1"
+val circeVersion = "0.14.1"
 
-val flinkDependencies = Seq(
-  // flink libraries
+
+val Dependencies = Seq(
+  // Flink
   "org.apache.flink" %% "flink-runtime-web" % flinkVersion, //interfaz web
   "org.apache.flink" %% "flink-clients" % flinkVersion,
   "org.apache.flink" %% "flink-scala" % flinkVersion,
   "org.apache.flink" %% "flink-streaming-scala" % flinkVersion,
   "org.apache.flink" %% "flink-connector-kafka" % flinkVersion,
-  "org.apache.flink" % "flink-json" % flinkVersion
+  "org.apache.flink" % "flink-json" % flinkVersion,
   //"ch.qos.logback" % "logback-classic" % "1.2.3"
 
   // JSON libraries
@@ -28,6 +30,14 @@ val flinkDependencies = Seq(
   // https://mvnrepository.com/artifact/org.apache.flink/flink-connector-kafka-0.8
   //  "org.apache.flink" %% "flink-connector-kafka-0.8" % "1.1.5",
   //"org.json4s" %% "json4s-native" % "3.6.10"
+
+
+  // Circe
+  "io.circe" %% "circe-core" % "0.12.0-M3",
+  "io.circe" %% "circe-generic" % "0.12.0-M3",
+  "io.circe" %% "circe-parser" % "0.11.1"
+
+
 
 )
 
@@ -37,7 +47,7 @@ scalacOptions ++= Seq( "-target:jvm-1.8", "-language:postfixOps")
 
 lazy val root = (project in file(".")).
   settings(
-    libraryDependencies ++= flinkDependencies
+    libraryDependencies ++= Dependencies
   )
 
 assembly / mainClass := Some("es.upm.dit.Job")
