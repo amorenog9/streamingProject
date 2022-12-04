@@ -20,24 +20,26 @@ class EventProcessor extends RichFlatMapFunction[TrainEvent, TrainEvent] {
     val currentState = if (tmpCurrentState != null) {
       tmpCurrentState
     } else {
-      TrainEvent("-", 0, "-")
+      TrainEvent("-", 0, "-", 0, 0, "-")
     }
 
     // update the count
     val newState = input
 
     // Creacion de evento
-    if ((currentState.EVENT_TYPE != newState.EVENT_TYPE) && (currentState.DATE_EVENT != newState.DATE_EVENT) && (currentState == TrainEvent("-", 0, "-"))) {
+    if ((currentState.event_type != newState.event_type) && (currentState.date_event != newState.date_event) && (currentState == TrainEvent("-", 0, "-", 0, 0, "-"))) {
       trainState.update(newState)
       out.collect(newState)
-      println(s"Se ha CREADO el evento del tren ${input.ID} con el evento ${newState.EVENT_TYPE}") // solo se imprime en consola
+      println(s"Se ha CREADO el evento del tren ${input.id} con el evento ${newState.event_type}") // solo se imprime en consola
     }
+
+
     // Actualizacion de evento
     // si tiene el mismo evento en la misma hora => coleccion de VINs - No actualizo el estado
-    if ((currentState.EVENT_TYPE != newState.EVENT_TYPE) && (currentState.DATE_EVENT != newState.DATE_EVENT) && (currentState != TrainEvent("-", 0, "-"))) {
+    if ((currentState.event_type != newState.event_type) && (currentState.date_event != newState.date_event) && (currentState != TrainEvent("-", 0, "-", 0, 0, "-"))) {
       trainState.update(newState)
       out.collect(newState)
-      println(s"Se ha ACTUALIZADO el evento del tren ${input.ID} de ${currentState.EVENT_TYPE} a ${newState.EVENT_TYPE}") // solo se imprime en consola
+      println(s"Se ha ACTUALIZADO el evento del tren ${input.id} de ${currentState.event_type} a ${newState.event_type}") // solo se imprime en consola
       //trainState.clear() - Podría reutilizarse si se repite el ID
     }
   }

@@ -1,8 +1,10 @@
 package es.upm.dit
 
 object struct {
-  case class UserEventPrompt(EVENT_TYPE_user: String, DATE_EVENT_user: String, ID_user: String, correctParams: Boolean)
+  case class UserEventPrompt(event_type_user: String, date_event_user: String, id_user: String, lat_user: String , lng_user: String , location_user: String ,correctParams: Boolean)
 
-  case class TrainEvent(EVENT_TYPE: String, DATE_EVENT: Long, ID: String)
+  case class TrainEvent(event_type: String, date_event: Long, id: String, lat: Double, lng: Double, location: String) //Es como me viene el evento train del topic
+  case class TrainEventMemory(event_type: String, date_event: Long, id: String, coordinates: (Double, Double), location: String,
+                              date_event_memory: List[Long], event_type_memory: List[String], position_memory: List[(Double, Double)])
 
 }

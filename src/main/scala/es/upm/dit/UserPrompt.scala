@@ -7,21 +7,30 @@ class UserPrompt {
   def getPromptArgs(): UserEventPrompt = {
     // Cuando los eventos vengan de diferentes fuentes (trenes, aguas, etc) sera necesario identicar parametros clave
     println("Introduce el valor del campo que identifica univocamente a los eventos (ID)")
-    val ID_user = scala.io.StdIn.readLine()
+    val id_user = scala.io.StdIn.readLine()
 
     println("Introduce el valor del campo que identifica el tipo de evento")
-    val EVENT_TYPE_user = scala.io.StdIn.readLine()
+    val event_type_user = scala.io.StdIn.readLine()
 
     println("Introduce el valor del campo que identifica la fecha en la que ocurre el evento")
-    val DATE_EVENT_user = scala.io.StdIn.readLine()
+    val date_event_user = scala.io.StdIn.readLine()
+
+    println("Introduce el valor del campo que identifica latitud")
+    val lat_user = scala.io.StdIn.readLine()
+
+    println("Introduce el valor del campo que identifica la longitud")
+    val lng_user = scala.io.StdIn.readLine()
+
+    println("Introduce el valor del campo que identifica la localizacion")
+    val location_user = scala.io.StdIn.readLine()
 
     val correctParams: Boolean =
-      if ((ID_user != "") && (EVENT_TYPE_user != "") && (DATE_EVENT_user != "")) {
+      if ((id_user != "") && (event_type_user != "") && (date_event_user != "") && (lat_user != "") && (lng_user != "") && (location_user != "") ) {
         true
       }
       else {false}
 
-    UserEventPrompt(EVENT_TYPE_user, DATE_EVENT_user, ID_user, correctParams)
+    UserEventPrompt(event_type_user, date_event_user, id_user, lat_user, lng_user, location_user, correctParams)
   }
 
 }
