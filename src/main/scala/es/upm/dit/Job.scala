@@ -1,12 +1,16 @@
 package es.upm.dit
 
+import com.typesafe.config.ConfigFactory
+
 import java.util.Properties
 import org.apache.flink.formats.json.JsonNodeDeserializationSchema
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 import org.apache.flink.streaming.api.scala._
 import es.upm.dit.struct._
-import io.circe._, io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
-
+import io.circe._
+import io.circe.generic.auto._
+import io.circe.parser._
+import io.circe.syntax._
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 
 
@@ -15,20 +19,21 @@ import org.apache.flink.api.common.serialization.SimpleStringSchema
 object Job{
   def main(args: Array[String]) {
 
-    val KAFKA_TOPIC_IN = "messages_in"
-    val KAFKA_TOPIC_OUT = "messages_out"
+    val parametros = ConfigFactory.load("applicationTrain.conf")
+
+    val KAFKA_TOPIC_IN = parametros.getString("KAFKA_TOPIC_IN")
+    val KAFKA_TOPIC_OUT = parametros.getString("KAFKA_TOPIC_OUT")
 
 
-    //val userArguments = new UserPrompt().getPromptArgs() // para introducir los parametros por el terminal
-    val userArguments = UserEventPrompt("EVENT_TYPE", "DATE_EVENT", "ID", "LAT", "LNG", "LOCATION_IDENTIFIED", true)
+    val userArguments = new UserPrompt().getPromptArgs(parametros) // para introducir los parametros por el terminal
 
     println(s"Los parametros introducidos son: ${userArguments.id_user}, ${userArguments.event_type_user}, ${userArguments.date_event_user}, ${userArguments.lat_user}, ${userArguments.lng_user}, ${userArguments.location_user}")
-    println("Comienza flink-streaming")
+    println(s"Comienza flink-streaming en ${parametros.getString("nombreSistema")}")
 
     if (userArguments.correctParams){
       val env = StreamExecutionEnvironment.getExecutionEnvironment
       val kafkaProperties = new Properties()
-      kafkaProperties.setProperty("bootstrap.servers", "localhost:9092")
+      kafkaProperties.setProperty("bootstrap.servers", parametros.getString("KAFKA_DIRECTION_IN"))
       kafkaProperties.setProperty("group.id", "test")
 
       val kafkaConsumer = new FlinkKafkaConsumer(
@@ -57,7 +62,7 @@ object Job{
       keyedListTrains
         .map(_.asJson.noSpaces)
         .addSink(new FlinkKafkaProducer[String](
-          "localhost:9092",
+          parametros.getString("KAFKA_DIRECTION_OUT"),
           KAFKA_TOPIC_OUT,
           new SimpleStringSchema))
 

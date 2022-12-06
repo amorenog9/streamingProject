@@ -28,9 +28,10 @@ val Dependencies = Seq(
   // Circe
   "io.circe" %% "circe-core" % "0.12.0-M3",
   "io.circe" %% "circe-generic" % "0.12.0-M3",
-  "io.circe" %% "circe-parser" % "0.11.1"
+  "io.circe" %% "circe-parser" % "0.11.1",
 
-
+  // config
+  "com.typesafe" % "config" % "1.4.2"
 
 )
 
