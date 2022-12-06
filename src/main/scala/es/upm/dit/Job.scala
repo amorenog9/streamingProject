@@ -39,9 +39,9 @@ object Job{
       val train: DataStream[TrainEvent] = env
         .addSource(kafkaConsumer)//.setStartFromLatest())
         .map(jsonNode => TrainEvent(
+          id = jsonNode.get(s"${userArguments.id_user}").asText(),
           event_type = jsonNode.get(s"${userArguments.event_type_user}").asText(),
           date_event = jsonNode.get(s"${userArguments.date_event_user}").asLong(), // fecha en epoch milliseconds
-          id = jsonNode.get(s"${userArguments.id_user}").asText(),
           lat = jsonNode.get(s"${userArguments.lat_user}").asDouble(),
           lng = jsonNode.get(s"${userArguments.lng_user}").asDouble(),
           location = jsonNode.get(s"${userArguments.location_user}").asText()

@@ -28,9 +28,9 @@ class EventProcessor extends RichFlatMapFunction[TrainEvent, TrainEventMemory] {
 
 
     val newMemoryTrain = TrainEventMemory(
+      id = newState.id,
       event_type = newState.event_type,
       date_event = newState.date_event,
-      id = newState.id,
       coordinates = (newState.lat, newState.lng),
       location = newState.location,
       date_event_memory = currentState.date_event_memory :+ newState.date_event, //añado a la lista anterior el nuevo elemento (al final)
@@ -39,7 +39,7 @@ class EventProcessor extends RichFlatMapFunction[TrainEvent, TrainEventMemory] {
 
 
     // Creacion de evento
-    if ((currentState.event_type != newState.event_type) && (currentState.date_event != newState.date_event) && (currentState == TrainEventMemory("-", 0, "-", (0, 0), "-", Nil, Nil, Nil))) {
+    if ((currentState.event_type != newState.event_type) && (currentState.date_event <= newState.date_event) && (currentState == TrainEventMemory("-",  "-", 0, (0, 0), "-", Nil, Nil, Nil))) {
 
       trainMemoryState.update(newMemoryTrain) //actualizamos el estado (valor actual -> valor nuevo)
       out.collect(newMemoryTrain)
@@ -49,7 +49,7 @@ class EventProcessor extends RichFlatMapFunction[TrainEvent, TrainEventMemory] {
 
 
     // Actualizacion de evento -- Solo actualizamos si Evento diferente y Fecha de evento diferente a la anterior => si tiene el mismo evento en la misma hora => coleccion de VINs - No actualizo el estado
-    if ((currentState.event_type != newState.event_type) && (currentState.date_event != newState.date_event) && (currentState != TrainEventMemory("-", 0, "-", (0, 0), "-", Nil, Nil, Nil))) {
+    if ((currentState.event_type != newState.event_type) && (currentState.date_event <= newState.date_event) && (currentState != TrainEventMemory("-", "-", 0,  (0, 0), "-", Nil, Nil, Nil))) {
 
       trainMemoryState.update(newMemoryTrain) //actualizamos el estado (valor actual -> valor nuevo)
       out.collect(newMemoryTrain)
