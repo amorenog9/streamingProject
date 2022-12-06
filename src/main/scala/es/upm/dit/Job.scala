@@ -57,9 +57,9 @@ object Job{
       keyedListTrains
         .map(_.asJson.noSpaces)
         .addSink(new FlinkKafkaProducer[String](
-        "localhost:9092",
+          "localhost:9092",
           KAFKA_TOPIC_OUT,
-        new SimpleStringSchema))
+          new SimpleStringSchema))
 
 
       env.execute("FLink-Execution")
