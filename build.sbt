@@ -12,7 +12,8 @@ organization := "es.upm.dit"
 ThisBuild / scalaVersion := "2.11.12"
 
 val flinkVersion = "1.12.1"
-
+val sparkVersion = "2.4.8"
+val deltaVersion = "0.6.1"
 
 val Dependencies = Seq(
   // Flink
@@ -31,7 +32,15 @@ val Dependencies = Seq(
   "io.circe" %% "circe-parser" % "0.11.1",
 
   // config
-  "com.typesafe" % "config" % "1.4.2"
+  "com.typesafe" % "config" % "1.4.2",
+
+  //Spark
+  "org.apache.spark" %% "spark-core" % sparkVersion,
+  "org.apache.spark" %% "spark-sql" % sparkVersion,
+  "org.apache.spark" %% "spark-sql-kafka-0-10" % sparkVersion,
+
+  //Delta
+  "io.delta" %% "delta-core" % deltaVersion
 
 )
 

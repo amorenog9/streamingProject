@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="sbt: org.antlr:antlr4:4.7:jar">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/antlr/antlr4/4.7/antlr4-4.7.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

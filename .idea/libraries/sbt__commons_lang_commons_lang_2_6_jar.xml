@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="sbt: commons-lang:commons-lang:2.6:jar">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/commons-lang/commons-lang/2.6/commons-lang-2.6.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
