@@ -6,7 +6,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.functions.{col, from_json}
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 
 import java.io.File
 
@@ -19,24 +19,41 @@ object KafkaSparkWriter{
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
 
+    // Config
     val parametros = ConfigFactory.load("applicationTrain.conf")
     val KAFKA_TOPIC_OUT = parametros.getString("KAFKA_TOPIC_OUT")
+    val pathTrain = parametros.getString("TRAIN_DIR")
+    val pathTable = parametros.getString("TRAIN_DIR_TABLE")
+    val pathCheckpoint = parametros.getString("TRAIN_DIR_CHECKPOINT")
 
-    // Borramos las trazas pasadas de la tabla
-    if (new File("/tmp/delta").exists()) FileUtils.deleteDirectory(new File("/tmp/delta")) // cuidado con esta linea
-    val path = new File("/tmp/delta/table").getAbsolutePath
+    /*
+    // Borramos las trazas pasadas de la tabla de trenes
+    println("¿Quieres borrar la ruta donde se almacena la tabla para crear una nueva?")
+    print("s/n: ")
+    val userConfirmation = scala.io.StdIn.readLine()
 
+    if (userConfirmation == "s") {
+      val dir = new File(pathTrain)
+      if (dir.exists()) FileUtils.deleteDirectory(dir) // Cuidado con este
+      println("Se ha eliminado la tabla existente")
+    }
+    else{println("No, se ha borrado la tabla. Se seguira excribiendo sobre la tabla existente")}
+     */
+
+    // Borramos las trazas pasadas las tablas y checkpoints
+    val dir = new File(pathTrain)
+    if (dir.exists()) FileUtils.deleteDirectory(dir) // Cuidado con este
+
+    // Creamos una nueva ruta para almacenar la tabla
+    val path = new File(pathTable).getAbsolutePath //directorio donde se va a almacenar la tabla
+
+    // Creamos SparkSession
     val spark = SparkSession
       .builder
       .appName("Kafka2Delta")
       .master("local[*]")
       .getOrCreate()
     import spark.implicits._
-
-    // Para upsertToDelta necesitamos una delta table (con las columnas del evento) => Vamos a crear una fila en esa tabla simplemente para que el resto de codigo pueda referenciarse a ella.
-    // Para ello, spark va a leer de un topic diferente a los utilizados en el programa
-    val dfTableCreation = spark.read.json("/home/alex/Escritorio/TFM/flink_pruebasb/src/main/scala/es/upm/dit/JsonTable.json") // tengo que mover este Json RUTA RELATIVA!
-    dfTableCreation.write.format("delta").save(path)
 
     // Leemos eventos del topic de Kafka
     val df = spark.readStream
@@ -78,6 +95,16 @@ object KafkaSparkWriter{
     println("Esquema que tendra nuestra Delta Table:")
     ds.printSchema()
 
+    val exists = DeltaTable.isDeltaTable(path)
+    if (!exists) {
+      val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], schema)
+        emptyDF
+        .write
+        .format("delta")
+        .mode(SaveMode.Overwrite)
+        .save(path)
+    }
+
 
     // Esta funcion nos permite actualizar el evento que tenemos en la tabla con el evento nuevo (si el id que le entra existe en la tabla => modifica la fila; Si no, metemos como nueva fila el evento que viene)
     def upsertToDelta(microBatchOutputDF: DataFrame, batchId: Long): Unit = {
@@ -88,7 +115,7 @@ object KafkaSparkWriter{
           microBatchOutputDF.alias("s"),
           "s.id = t.id"
         )
-        .whenMatched("t.event_type != s.event_type").updateAll()
+        .whenMatched().updateAll()
         .whenNotMatched().insertAll()
         .execute()
     }
@@ -101,7 +128,7 @@ object KafkaSparkWriter{
       .foreachBatch(upsertToDelta _)
       .outputMode("update")
       //.outputMode("append")
-      .option("checkpointLocation", new File("/tmp/delta/checkpoint").getCanonicalPath)
+      .option("checkpointLocation", new File(pathCheckpoint).getCanonicalPath)
       .start(path)
 
     query.awaitTermination()

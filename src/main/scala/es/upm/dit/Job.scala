@@ -19,14 +19,13 @@ import org.apache.flink.api.common.serialization.SimpleStringSchema
 object Job{
   def main(args: Array[String]) {
 
+    // Config
     val parametros = ConfigFactory.load("applicationTrain.conf")
-
     val KAFKA_TOPIC_IN = parametros.getString("KAFKA_TOPIC_IN")
     val KAFKA_TOPIC_OUT = parametros.getString("KAFKA_TOPIC_OUT")
 
 
     val userArguments = new UserPrompt().getPromptArgs(parametros) // para introducir los parametros por el terminal
-
     println(s"Los parametros introducidos son: ${userArguments.id_user}, ${userArguments.event_type_user}, ${userArguments.date_event_user}, ${userArguments.lat_user}, ${userArguments.lng_user}, ${userArguments.location_user}")
     println(s"Comienza flink-streaming en ${parametros.getString("nombreSistema")}")
 

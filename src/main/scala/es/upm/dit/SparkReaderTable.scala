@@ -1,5 +1,6 @@
 package es.upm.dit
 
+import com.typesafe.config.ConfigFactory
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
 
@@ -13,6 +14,9 @@ object SparkReaderTable{
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
 
+    // Config
+    val parametros = ConfigFactory.load("applicationTrain.conf")
+    val pathTable = parametros.getString("TRAIN_DIR_TABLE")
 
     val spark = SparkSession
       .builder
@@ -20,13 +24,10 @@ object SparkReaderTable{
       .master("local[*]")
       .getOrCreate()
 
-    // in production this should be a more reliable location such as HDFS
-    val path = "/tmp/delta/table"
-
     val df = spark.read
       .format("delta")
       //.option("versionAsOf", 5)
-      .load(path)
+      .load(pathTable)
 
     df.show()
 
