@@ -5,8 +5,9 @@ import io.delta.tables.DeltaTable
 import org.apache.commons.io.FileUtils
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.functions.{col, from_json}
+import org.apache.spark.sql.streaming.Trigger
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession, functions}
 
 import java.io.File
 
@@ -109,14 +110,35 @@ object KafkaSparkWriter{
     // Esta funcion nos permite actualizar el evento que tenemos en la tabla con el evento nuevo (si el id que le entra existe en la tabla => modifica la fila; Si no, metemos como nueva fila el evento que viene)
     def upsertToDelta(microBatchOutputDF: DataFrame, batchId: Long): Unit = {
       val deltaTable = DeltaTable.forPath(path)
+
+      // Tomo el microbatchDF y agrupo los valores (puede haber varios con mismo ID si se procesa muy rapido los eventos) y tomo unicamente la fila con DATE_EVENT
+      // mas grande (la ultima actualizacion del evento) de cada ID
+      val maxDateEvent = microBatchOutputDF
+        .groupBy($"id")
+        .agg(functions.max($"date_event"))
+        .toDF("r_id", "max_date_event")
+
+      // Junto esas pocas filas con el dataframe grande microbatchDF para tener el resto de columnas de esas filas obtenidas en maxDateEvent === JOIN
+      val joinedDF = microBatchOutputDF.join(
+        maxDateEvent,
+        ($"r_id" === $"id") && ($"max_date_event" === $"date_event")
+      ).drop("r_id", "max_date_event") //elimino las columnas usadas en maxDateEvent para que no salgan tras hacer el JOIN
+      /* Foto para ver como de verdad hay varias filas iguales en el mismo microBatch
+      println("microbatch")
+      microBatchOutputDF.show()
+
+      println("joined")
+      joinedDF.show()
+      */
+
       deltaTable
         .as("t")
         .merge(
-          microBatchOutputDF.alias("s"),
+          joinedDF.alias("s"),
           "s.id = t.id"
         )
-        .whenMatched().updateAll()
-        .whenNotMatched().insertAll()
+        .whenMatched().updateAll() //si hay coincidencia de mismo id (expresion merge) => actualiza la fila con lo que me viene de joinedDF
+        .whenNotMatched().insertAll() //si no hay fila con ese id => inserta la fila
         .execute()
     }
 
@@ -129,6 +151,7 @@ object KafkaSparkWriter{
       .outputMode("update")
       //.outputMode("append")
       .option("checkpointLocation", new File(pathCheckpoint).getCanonicalPath)
+     // .trigger(Trigger.Continuous("1 second"))  //A checkpoint interval of 1 second means that the continuous processing engine will record the progress of the query every second.
       .start(path)
 
     query.awaitTermination()
