@@ -20,7 +20,7 @@ class EventProcessor extends RichFlatMapFunction[TrainEvent, TrainEventMemory] {
     val currentState = if (tmpCurrentState != null) { // valor que tenemos antes de actualizar
       tmpCurrentState
     } else {
-      TrainEventMemory(event_type = "-", date_event=  0, id= "-", coordinates = (0, 0), location= "-", date_event_memory= Nil, event_type_memory= Nil, position_memory= Nil)
+      TrainEventMemory(event_type = "-", date_event=  0, id= "-", coordinates = (0, 0), location= "-", date_event_memory= Nil, event_type_memory= Nil, coordinates_memory= Nil, location_memory = Nil)
     }
 
     // update the count
@@ -35,11 +35,13 @@ class EventProcessor extends RichFlatMapFunction[TrainEvent, TrainEventMemory] {
       location = newState.location,
       date_event_memory = currentState.date_event_memory :+ newState.date_event, //añado a la lista anterior el nuevo elemento (al final)
       event_type_memory = currentState.event_type_memory :+ newState.event_type,
-      position_memory = currentState.position_memory :+ (newState.lat, newState.lng))
+      coordinates_memory = currentState.coordinates_memory :+ (newState.lat, newState.lng),
+      location_memory = currentState.location_memory :+ newState.location
+    )
 
 
     // Creacion de evento
-    if ((currentState.event_type != newState.event_type) && (currentState.date_event <= newState.date_event) && (currentState == TrainEventMemory("-",  "-", 0, (0, 0), "-", Nil, Nil, Nil))) {
+    if ((currentState.event_type != newState.event_type) && (currentState.date_event <= newState.date_event) && (currentState == TrainEventMemory("-",  "-", 0, (0, 0), "-", Nil, Nil, Nil, Nil))) {
 
       trainMemoryState.update(newMemoryTrain) //actualizamos el estado (valor actual -> valor nuevo)
       out.collect(newMemoryTrain)
@@ -49,7 +51,7 @@ class EventProcessor extends RichFlatMapFunction[TrainEvent, TrainEventMemory] {
 
 
     // Actualizacion de evento -- Solo actualizamos si Evento diferente y Fecha de evento diferente a la anterior => si tiene el mismo evento en la misma hora => coleccion de VINs - No actualizo el estado
-    if ((currentState.event_type != newState.event_type) && (currentState.date_event <= newState.date_event) && (currentState != TrainEventMemory("-", "-", 0,  (0, 0), "-", Nil, Nil, Nil))) {
+    if ((currentState.event_type != newState.event_type) && (currentState.date_event <= newState.date_event) && (currentState != TrainEventMemory("-", "-", 0,  (0, 0), "-", Nil, Nil, Nil, Nil))) {
 
       trainMemoryState.update(newMemoryTrain) //actualizamos el estado (valor actual -> valor nuevo)
       out.collect(newMemoryTrain)

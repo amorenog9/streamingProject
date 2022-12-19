@@ -76,7 +76,8 @@ object KafkaSparkWriter{
         StructField("location", StringType),
         StructField("date_event_memory", ArrayType(LongType)),
         StructField("event_type_memory", ArrayType(StringType)),
-        StructField("position_memory", ArrayType(ArrayType(DoubleType)))
+        StructField("coordinates_memory", ArrayType(ArrayType(DoubleType))),
+        StructField("location_memory", ArrayType(StringType))
       ))
 
     /*
@@ -99,7 +100,7 @@ object KafkaSparkWriter{
     val exists = DeltaTable.isDeltaTable(path)
     if (!exists) {
       val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], schema)
-        emptyDF
+      emptyDF
         .write
         .format("delta")
         .mode(SaveMode.Overwrite)
@@ -123,6 +124,7 @@ object KafkaSparkWriter{
         maxDateEvent,
         ($"r_id" === $"id") && ($"max_date_event" === $"date_event")
       ).drop("r_id", "max_date_event") //elimino las columnas usadas en maxDateEvent para que no salgan tras hacer el JOIN
+
       /* Foto para ver como de verdad hay varias filas iguales en el mismo microBatch
       println("microbatch")
       microBatchOutputDF.show()
@@ -151,7 +153,6 @@ object KafkaSparkWriter{
       .outputMode("update")
       //.outputMode("append")
       .option("checkpointLocation", new File(pathCheckpoint).getCanonicalPath)
-     // .trigger(Trigger.Continuous("1 second"))  //A checkpoint interval of 1 second means that the continuous processing engine will record the progress of the query every second.
       .start(path)
 
     query.awaitTermination()

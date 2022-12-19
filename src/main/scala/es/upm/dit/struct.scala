@@ -6,6 +6,6 @@ object struct {
   case class TrainEvent(id: String, event_type: String, date_event: Long,  lat: Double, lng: Double, location: String) //Es como me viene el evento train del topic
 
   case class TrainEventMemory(id: String, event_type: String, date_event: Long,  coordinates: (Double, Double), location: String,
-                              date_event_memory: List[Long], event_type_memory: List[String], position_memory: List[(Double, Double)]) //
+                              date_event_memory: List[Long], event_type_memory: List[String], coordinates_memory: List[(Double, Double)], location_memory: List[String]) //
 
 }
