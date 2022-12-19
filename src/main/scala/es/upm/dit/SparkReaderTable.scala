@@ -97,17 +97,10 @@ object SparkReaderTable{
       .withColumn(s"${lng}", col("coordinate").getItem(1)) // [lat, lng] lo transformo a lng
       .drop("coordinate")
 
-
-    /*
-      .select(col("*"), flatten(col("event_before_timestamp")))
-      .select(col("*"), flatten(col("coordinate_before_timestamp")))
-      .select(col("*"), flatten(col("location_before_timestamp")))
-       */
-
     actualDf.show()
 
 
-    // Este df filtra desde la fecha seleccionada (sin incluirse), los eventos que tiene en memoria la tabla hasta el momento en el que se ha stremeado a la BBDD
+    // Este DF filtra desde la fecha seleccionada (sin incluirse), los eventos que tiene en memoria la tabla hasta el momento en el que se ha stremeado a la BBDD
     val df2 = df.select(col("*"), expr(s"filter(date_event_memory, x -> x > ${timeStampValue})").as("dates_from_timestamp"))
       .withColumn("index_size_from_date", size(col("date_event_memory"))-size(col("dates_from_timestamp"))+1) //el array index empieza en 1 en spark array. Esta columna nos da el indice que empezar a leer event_type_memory
       .withColumn("events_from_timestamp", functions.expr("slice (event_type_memory , index_size_from_date, 999999999)")) //999999999 the length of the slice (valor maximo que podemos poner) -- suponemos infinito
@@ -123,7 +116,7 @@ object SparkReaderTable{
     df2.show()
 
 
-    // Este desglosa los arrays (memory) en diferentes columnas y despues ordena por fecha del evento para poder streamearlo de arriba hacia abajo (como el fichero .feather)
+    // Este DF desglosa los arrays (memory) en diferentes columnas y despues ordena por fecha del evento para poder streamearlo de arriba hacia abajo (como el fichero .feather)
     val df3 = df2.withColumn("zip_values", functions.expr("arrays_zip( dates_from_timestamp, events_from_timestamp, coordinates_from_timestamp, locations_from_timestamp) "))
       .withColumn("zip_values", functions.expr("explode(zip_values)"))
       .drop("dates_from_timestamp")
@@ -148,16 +141,11 @@ object SparkReaderTable{
     val dir = new File(savePathEventsFromTimestamp + s"/${timeStampValue}")
     if (dir.exists()) FileUtils.deleteDirectory(dir) // Cuidado con este
 
-    /*
-    val result = df3.select(col("*")).toJSON.cache()
-    val write = result.coalesce(1).toJavaRDD.saveAsTextFile(savePathEventsFromTimestamp + s"/${timeStampValue}")
-     */
-    df3.coalesce(1).write.format("json").save(savePathEventsFromTimestamp + s"/${timeStampValue}")
-    new File(savePathEventsFromTimestamp + s"/${timeStampValue}" + "/_SUCCESS").delete() // eliminamos archivo /_SUCESS para que el producer unicamente lea el archivo JSON
-
+    df3.coalesce(1).write.format("json").save(savePathEventsFromTimestamp + s"/${timeStampValue}") //archivo json donde en cada linea hay un {} que sera cada fila del df
     println(s"Se ha almacenado el fichero con eventos posteriores a ${timeStampValue} en la carpeta: ${savePathEventsFromTimestamp + s"/${timeStampValue}"}")
-    println(s"Adicionalmente, se ha borrado el archivo: savePathEventsFromTimestamp" + s"/${timeStampValue}" + "/_SUCCESS" + "para que este unicamente el JSON en la carpeta")
 
+    new File(savePathEventsFromTimestamp + s"/${timeStampValue}" + "/_SUCCESS").delete() // eliminamos archivo /_SUCESS para que el producer unicamente lea el archivo JSON
+    println(s"Se ha borrado el archivo: savePathEventsFromTimestamp" + s"/${timeStampValue}" + "/_SUCCESS" + "para que este unicamente el JSON en la carpeta")
 
   // Cabiamos el nombre del JSON obtenido a uno mas sencillo de manejar
     def getListOfFiles(dir: String): List[File] = {
@@ -181,6 +169,8 @@ object SparkReaderTable{
 
     // Renombramos el archivo
     mv(savePathEventsFromTimestamp + s"/${timeStampValue}" + s"/${files.head}", savePathEventsFromTimestamp + s"/${timeStampValue}" + "/eventsFromTimestamp.json")
+
+
 
 
   }
