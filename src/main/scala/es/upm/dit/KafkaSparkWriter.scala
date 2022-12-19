@@ -97,6 +97,7 @@ object KafkaSparkWriter{
     println("Esquema que tendra nuestra Delta Table:")
     ds.printSchema()
 
+    // Crea una tabla vacia con el esquema especificado
     val exists = DeltaTable.isDeltaTable(path)
     if (!exists) {
       val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], schema)
