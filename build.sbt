@@ -40,8 +40,9 @@ val Dependencies = Seq(
   "org.apache.spark" %% "spark-sql-kafka-0-10" % sparkVersion,
 
   //Delta
-  "io.delta" %% "delta-core" % deltaVersion
+  "io.delta" %% "delta-core" % deltaVersion,
 
+  "com.typesafe.play" %% "play-json" % "2.7.4"
 )
 
 javacOptions ++= Seq("-target", "1.8")

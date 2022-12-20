@@ -38,7 +38,7 @@ object Job{
       val kafkaConsumer = new FlinkKafkaConsumer(
         KAFKA_TOPIC_IN,
         new JsonNodeDeserializationSchema(), //deserializes a JSON String into an ObjectNode.
-        kafkaProperties)
+        kafkaProperties) //.setStartFromEarliest()
 
       val train: DataStream[TrainEvent] = env
         .addSource(kafkaConsumer)//.setStartFromLatest())

@@ -9,6 +9,7 @@ import org.apache.spark.sql.functions.{arrays_zip, col, explode, expr, flatten, 
 
 import java.io.File
 import util.Try
+import scala.sys.process._
 
 
 
@@ -25,15 +26,18 @@ object SparkReaderTable{
 
     // Config
     val parametros = ConfigFactory.load("applicationTrain.conf")
+
     val pathTable = parametros.getString("TRAIN_DIR_TABLE")
 
-    val savePathEventsFromTimestamp = parametros.getString("EVENTS_FROM_TIMESTAMP")
-
+    val id = parametros.getString("idEvento")
     val event_type = parametros.getString("nombreEvento")
     val date_event = parametros.getString("fechaEvento")
     val lat = parametros.getString("latitudEvento")
     val lng= parametros.getString("longitudEvento")
     val location= parametros.getString("localizacionEvento")
+
+    val savePathEventsFromTimestamp = parametros.getString("PATH_EVENTS_FROM_TIMESTAMP")
+    val pythonScriptFile = parametros.getString("PATH_EVENTS_FROM_TIMESTAMP_KAFKA_PRODUCER")
 
 
     val spark = SparkSession
@@ -42,16 +46,23 @@ object SparkReaderTable{
       .master("local[*]")
       //.master("spark://alex-GE75-Raider-8SF:7077")
       .getOrCreate()
-    /*
-        val df = spark.read
-          .format("delta")
-          //.option("versionAsOf", 5)
-          .load(pathTable)
 
-        df.show()
+    val df_load = spark.read
+      .format("delta")
+      //.option("versionAsOf", 5)
+      .load(pathTable)
+
+    df_load.show() //DF que tengo de la delta table
+
+    // Eliminamos los valores actuales de la tabla. No se necesitan para nada, estan en la memoria y trabajaremos con la memoria
+    val df = df_load
+      .drop("event_type")
+      .drop("date_event")
+      .drop("coordinates")
+      .drop("location")
 
 
-     */
+    /*    PRUEBAS
     val sc = spark.sparkContext // Just used to create test RDDs
     val rdd = sc.parallelize(
       Seq(
@@ -64,10 +75,12 @@ object SparkReaderTable{
     val df = spark.createDataFrame(rdd).toDF("id", "date_event_memory", "event_type_memory", "coordinates_memory", "location_memory")
 
     df.show()
-
+*/
 
     // Parametro relacionado con la query
-    val timeStampValue = 2
+
+
+    val timeStampValue = 1L
 
 
 
@@ -113,7 +126,7 @@ object SparkReaderTable{
       .drop("coordinates_memory") //borramos la columna que almacenaba las posiciones (ahora solo queremos los eventos a partir de x fecha)
       .drop("location_memory")
 
-    df2.show()
+    //df2.show()
 
 
     // Este DF desglosa los arrays (memory) en diferentes columnas y despues ordena por fecha del evento para poder streamearlo de arriba hacia abajo (como el fichero .feather)
@@ -131,6 +144,7 @@ object SparkReaderTable{
       .withColumnRenamed("dates_from_timestamp", s"${date_event}")
       .withColumnRenamed("events_from_timestamp", s"${event_type}")
       .withColumnRenamed("locations_from_timestamp", s"${location}")
+      .withColumnRenamed("id", s"${id}") //renmombramos la columna id que esta en minusculas (por venir del valor que se asigna en la case class de flink y lo ponemos en mayusculas, que es como esta en anubis.feather)
       .orderBy(s"${date_event}") //antes de enviar la tabla a JSON -> la ordenamos para que se haga el stream correctamente
 
 
@@ -169,6 +183,12 @@ object SparkReaderTable{
 
     // Renombramos el archivo
     mv(savePathEventsFromTimestamp + s"/${timeStampValue}" + s"/${files.head}", savePathEventsFromTimestamp + s"/${timeStampValue}" + "/eventsFromTimestamp.json")
+
+
+    //Ejecutamos el script que realiza el stream de los eventos posteriores al timestamp almacenados en la BBDD
+    s"python3 ${pythonScriptFile}".! //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
+
+
 
 
 
