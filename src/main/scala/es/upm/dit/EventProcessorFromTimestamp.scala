@@ -9,12 +9,12 @@ import org.apache.flink.util.Collector
 
 class EventProcessorFromTimestamp extends RichFlatMapFunction[TrainEvent, TrainEventMemory] {
 
-  private var trainMemoryState: ValueState[TrainEventMemory] = _
+  private var trainMemoryState1: ValueState[TrainEventMemory] = _
 
   override def flatMap(input: TrainEvent, out: Collector[TrainEventMemory]): Unit = {
 
     // access the state value
-    val tmpCurrentState = trainMemoryState.value
+    val tmpCurrentState = trainMemoryState1.value
 
     // If it hasn't been used before, it will be null
     val currentState = if (tmpCurrentState != null) { // valor que tenemos antes de actualizar
@@ -43,7 +43,7 @@ class EventProcessorFromTimestamp extends RichFlatMapFunction[TrainEvent, TrainE
     // Creacion de evento
     if ((currentState.event_type != newState.event_type) && (currentState.date_event <= newState.date_event) && (currentState == TrainEventMemory("-",  "-", 0, (0, 0), "-", Nil, Nil, Nil, Nil))) {
 
-      trainMemoryState.update(newMemoryTrain) //actualizamos el estado (valor actual -> valor nuevo)
+      trainMemoryState1.update(newMemoryTrain) //actualizamos el estado (valor actual -> valor nuevo)
       out.collect(newMemoryTrain)
       println(s"Se ha CREADO el evento del tren ${input.id} con el evento ${newState.event_type}") // solo se imprime en consola
 
@@ -53,7 +53,7 @@ class EventProcessorFromTimestamp extends RichFlatMapFunction[TrainEvent, TrainE
     // Actualizacion de evento -- Solo actualizamos si Evento diferente y Fecha de evento diferente a la anterior => si tiene el mismo evento en la misma hora => coleccion de VINs - No actualizo el estado
     if ((currentState.event_type != newState.event_type) && (currentState.date_event <= newState.date_event) && (currentState != TrainEventMemory("-", "-", 0,  (0, 0), "-", Nil, Nil, Nil, Nil))) {
 
-      trainMemoryState.update(newMemoryTrain) //actualizamos el estado (valor actual -> valor nuevo)
+      trainMemoryState1.update(newMemoryTrain) //actualizamos el estado (valor actual -> valor nuevo)
       out.collect(newMemoryTrain)
       println(s"Se ha ACTUALIZADO el evento del tren ${input.id} de ${currentState.event_type} a ${newState.event_type}") // solo se imprime en consola
       //trainState.clear() - Podría reutilizarse si se repite el ID
@@ -61,8 +61,8 @@ class EventProcessorFromTimestamp extends RichFlatMapFunction[TrainEvent, TrainE
   }
 
   override def open(parameters: Configuration): Unit = {
-    trainMemoryState = getRuntimeContext.getState(
-      new ValueStateDescriptor[TrainEventMemory]("event", createTypeInformation[TrainEventMemory])
+    trainMemoryState1 = getRuntimeContext.getState(
+      new ValueStateDescriptor[TrainEventMemory]("event_temporal", createTypeInformation[TrainEventMemory])
     )
   }
 

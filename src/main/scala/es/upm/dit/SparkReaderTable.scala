@@ -1,18 +1,23 @@
 package es.upm.dit
 
 import com.typesafe.config.ConfigFactory
-import es.upm.dit.TimeUtils.dateCheck
+import es.upm.dit.struct.TrainEvent
 import org.apache.commons.io.FileUtils
+import org.apache.flink.api.common.serialization.SimpleStringSchema
+import org.apache.flink.formats.json.JsonNodeDeserializationSchema
+import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.{SparkSession, functions}
 import org.apache.spark.sql.functions.{arrays_zip, col, explode, expr, flatten, size}
 
 import java.io.File
+import java.util.Properties
 import util.Try
 import scala.sys.process._
-
-
-
+import org.apache.flink.streaming.api.scala._
+import io.circe.generic.auto._
+import io.circe.syntax._
 
 
 object SparkReaderTable{
@@ -24,7 +29,7 @@ object SparkReaderTable{
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
 
-    // Config
+    // Config PARAMETERS
     val parametros = ConfigFactory.load("applicationTrain.conf")
 
     val pathTable = parametros.getString("TRAIN_DIR_TABLE")
@@ -39,6 +44,12 @@ object SparkReaderTable{
     val savePathEventsFromTimestamp = parametros.getString("PATH_EVENTS_FROM_TIMESTAMP")
     val pythonScriptFile = parametros.getString("PATH_EVENTS_FROM_TIMESTAMP_KAFKA_PRODUCER")
 
+    val KAFKA_TOPIC_FINITE_IN = parametros.getString("TIMESTAMP_TOPIC_IN") // mensajes que vienen del fichero .json (eventos a partir de un timestamp)
+    val KAFKA_TOPIC_IN = parametros.getString("KAFKA_TOPIC_IN") //stream infinito que viene de anubis.feather
+    val KAFKA_TOPIC_FINITE_OUT = parametros.getString("TIMESTAMP_TOPIC_OUT") // topic por el que saldra los mensajes de la union de ambos streams
+
+
+
 
     val spark = SparkSession
       .builder
@@ -46,20 +57,6 @@ object SparkReaderTable{
       .master("local[*]")
       //.master("spark://alex-GE75-Raider-8SF:7077")
       .getOrCreate()
-
-    val df_load = spark.read
-      .format("delta")
-      //.option("versionAsOf", 5)
-      .load(pathTable)
-
-    df_load.show() //DF que tengo de la delta table
-
-    // Eliminamos los valores actuales de la tabla. No se necesitan para nada, estan en la memoria y trabajaremos con la memoria
-    val df = df_load
-      .drop("event_type")
-      .drop("date_event")
-      .drop("coordinates")
-      .drop("location")
 
 
     /*    PRUEBAS
@@ -77,11 +74,35 @@ object SparkReaderTable{
     df.show()
 */
 
+
+    //DF que tengo de la delta table hasta el momento de la ejecución
+    val df_load = spark.read
+      .format("delta")
+      //.option("versionAsOf", 5)
+      .load(pathTable)
+
+    //-----------------------------------------------------------------------------------
+    // Creo que debería meter el current time millis aqui; ES decir una vez se al 100% que he cargado la tabla en memoria y esta tabla va a ser inmutable con respecto a las transformaciones que haga
+    // Ese parametro hay que meterlo en stream infinite de flink
+    //-----------------------------------------------------------------------------------
+    val actualTime = System.currentTimeMillis()
+
+    df_load.show()
+
+    // Eliminamos los valores actuales de la tabla. No se necesitan para nada, estan en la memoria y trabajaremos con la memoria
+    val df = df_load
+      .drop("event_type")
+      .drop("date_event")
+      .drop("coordinates")
+      .drop("location")
+
+
     // Parametro relacionado con la query
 
-
-    val timeStampValue = 1L
-
+    // ----------------------------------------------
+    // Añadir llamada a funcion para este parametro query || Ojo que en flink si no es desde el principio deberiamos cambiar el CREADO EVENTO?
+    // ------------------------------------------
+    val timeStampValue = 1L // Llamada a funcion
 
 
     // Este DF proporciona la ultima actualización de evento hasta la fecha seleccionada (incluyendo la fecha seleccionada)
@@ -155,13 +176,15 @@ object SparkReaderTable{
     val dir = new File(savePathEventsFromTimestamp + s"/${timeStampValue}")
     if (dir.exists()) FileUtils.deleteDirectory(dir) // Cuidado con este
 
-    df3.coalesce(1).write.format("json").save(savePathEventsFromTimestamp + s"/${timeStampValue}") //archivo json donde en cada linea hay un {} que sera cada fila del df
+    //archivo json donde en cada linea hay un {} que sera cada fila del df
+    df3.coalesce(1).write.format("json").save(savePathEventsFromTimestamp + s"/${timeStampValue}")
     println(s"Se ha almacenado el fichero con eventos posteriores a ${timeStampValue} en la carpeta: ${savePathEventsFromTimestamp + s"/${timeStampValue}"}")
 
-    new File(savePathEventsFromTimestamp + s"/${timeStampValue}" + "/_SUCCESS").delete() // eliminamos archivo /_SUCESS para que el producer unicamente lea el archivo JSON
+    // eliminamos archivo /_SUCESS para que el producer unicamente lea el archivo JSON
+    new File(savePathEventsFromTimestamp + s"/${timeStampValue}" + "/_SUCCESS").delete()
     println(s"Se ha borrado el archivo: savePathEventsFromTimestamp" + s"/${timeStampValue}" + "/_SUCCESS" + "para que este unicamente el JSON en la carpeta")
 
-  // Cabiamos el nombre del JSON obtenido a uno mas sencillo de manejar
+    //Cabiamos el nombre del JSON obtenido a uno mas sencillo de manejar
     def getListOfFiles(dir: String): List[File] = {
       val d = new File(dir)
       if (d.exists && d.isDirectory) {
@@ -170,7 +193,6 @@ object SparkReaderTable{
         List[File]()
       }
     }
-
     // Definimos funcion de renombrado
     def mv(oldName: String, newName: String) =
       Try(new File(oldName).renameTo(new File(newName))).getOrElse(false)
@@ -185,12 +207,78 @@ object SparkReaderTable{
     mv(savePathEventsFromTimestamp + s"/${timeStampValue}" + s"/${files.head}", savePathEventsFromTimestamp + s"/${timeStampValue}" + "/eventsFromTimestamp.json")
 
 
+    // -------------------------------------------------------------------------------------------
+    // script para limpiar el kafka topic temporal (tanto de entrada como se salida) !!!!
+    // -------------------------------------------------------------------------------------------
+
+
+    // -------------------------------------------------------------------------------------------
+    // RELACIONAR EL NUMERO DE TIMESTAMP PARA PODER ENVIARLO A PYTHON Y QUE SEA UNA VARIABLE GLOBAL
+    // -------------------------------------------------------------------------------------------
+
     //Ejecutamos el script que realiza el stream de los eventos posteriores al timestamp almacenados en la BBDD
     s"python3 ${pythonScriptFile}".! //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
 
 
+    // Procesamiento de streams utilizandoo flink. Procesamiento de stream finito (archivo json) y stream infinito (messages_out)
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    val kafkaProperties = new Properties()
+    kafkaProperties.setProperty("bootstrap.servers", parametros.getString("KAFKA_DIRECTION_IN"))
+    kafkaProperties.setProperty("group.id", "test")
+
+    val kafkaConsumerFinite = new FlinkKafkaConsumer(
+      KAFKA_TOPIC_FINITE_IN,
+      new JsonNodeDeserializationSchema(), //deserializes a JSON String into an ObjectNode.
+      kafkaProperties).setStartFromEarliest()
+
+    val kafkaConsumerInfinite = new FlinkKafkaConsumer(
+      KAFKA_TOPIC_IN,
+      new JsonNodeDeserializationSchema(), //deserializes a JSON String into an ObjectNode.
+      kafkaProperties).setStartFromTimestamp(actualTime)
+
+    val trainFinite: DataStream[TrainEvent] = env
+      .addSource(kafkaConsumerFinite)
+      .map(jsonNode => TrainEvent(
+        id = jsonNode.get(s"${id}").asText(),
+        event_type = jsonNode.get(s"${event_type}").asText(),
+        date_event = jsonNode.get(s"${date_event}").asLong(), // fecha en epoch milliseconds
+        lat = jsonNode.get(s"${lat}").asDouble(),
+        lng = jsonNode.get(s"${lng}").asDouble(),
+        location = jsonNode.get(s"${location}").asText()
+      ))
+
+    val trainInfinite: DataStream[TrainEvent] = env
+      .addSource(kafkaConsumerInfinite)
+      .map(jsonNode => TrainEvent(
+        id = jsonNode.get(s"${id}").asText(),
+        event_type = jsonNode.get(s"${event_type}").asText(),
+        date_event = jsonNode.get(s"${date_event}").asLong(), // fecha en epoch milliseconds
+        lat = jsonNode.get(s"${lat}").asDouble(),
+        lng = jsonNode.get(s"${lng}").asDouble(),
+        location = jsonNode.get(s"${location}").asText()
+      ))
+
+    // -----------------------------------------------------------
+    // COMPROBAR QUE LA UNION ES CONCATENACION || de momento 1 fallo si es muy seguido => necesidad de delay para procesar
+    // -----------------------------------------------------------
+    // Concatenacion de 2 streams (finito e infinito)
+    val trainTemporalStream = trainFinite.union(trainInfinite)
 
 
+    val keyedTrainTemporalStream = trainTemporalStream.keyBy(_.id)
+      .flatMap(new EventProcessorFromTimestamp())
+
+
+    keyedTrainTemporalStream.print()
+
+    keyedTrainTemporalStream
+      .map(_.asJson.noSpaces)
+      .addSink(new FlinkKafkaProducer[String](
+        parametros.getString("KAFKA_DIRECTION_OUT"),
+        KAFKA_TOPIC_FINITE_OUT,
+        new SimpleStringSchema))
+
+    env.execute("FLink-Execution")
 
 
   }
