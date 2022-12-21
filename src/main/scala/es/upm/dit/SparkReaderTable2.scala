@@ -54,7 +54,7 @@ object SparkReaderTable2{
     //Ejecutamos el script que realiza el stream de los eventos posteriores al timestamp almacenados en la BBDD
     s"python3 ${pythonScriptFile}".! //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
 
-
+/*
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     val path = savePathEventsFromTimestamp + s"/${timeStampValue}" + "/eventsFromTimestamp.json"
     val inputFormat = new TextInputFormat(new Path(path));
@@ -79,6 +79,8 @@ object SparkReaderTable2{
 
 
     println(json)
+
+ */
 
   }
 
