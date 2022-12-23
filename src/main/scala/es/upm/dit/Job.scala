@@ -38,7 +38,7 @@ object Job{
       val kafkaConsumer = new FlinkKafkaConsumer(
         KAFKA_TOPIC_IN,
         new JsonNodeDeserializationSchema(), //deserializes a JSON String into an ObjectNode.
-        kafkaProperties) //.setStartFromEarliest()
+        kafkaProperties).setStartFromEarliest()
 
       val train: DataStream[TrainEvent] = env
         .addSource(kafkaConsumer)//.setStartFromLatest())
@@ -51,22 +51,34 @@ object Job{
           location = jsonNode.get(s"${userArguments.location_user}").asText()
         ))
 
-      val keyedListTrains = train.keyBy(_.id)
+      val keyedMemoryTrains = train.keyBy(_.id)
+        .flatMap(new EventProcessorToMemory())
+
+
+      val keyedTrains = train.keyBy(_.id)
         .flatMap(new EventProcessor())
 
 
       // Sinks
-      keyedListTrains.print()
+      keyedMemoryTrains.print()
+      keyedTrains.print()
 
-      keyedListTrains
+      keyedMemoryTrains
         .map(_.asJson.noSpaces)
         .addSink(new FlinkKafkaProducer[String](
           parametros.getString("KAFKA_DIRECTION_OUT"),
           KAFKA_TOPIC_OUT,
           new SimpleStringSchema))
 
+      keyedTrains
+        .map(_.asJson.noSpaces)
+        .addSink(new FlinkKafkaProducer[String](
+          parametros.getString("KAFKA_DIRECTION_OUT"),
+          "messages_out_no_memory",
+          new SimpleStringSchema))
 
-      env.execute("FLink-Execution")
+
+      env.execute("Flink-Execution")
     }
 
     else{println(s"Los parametros introducidos no son validos: ${userArguments}")}
