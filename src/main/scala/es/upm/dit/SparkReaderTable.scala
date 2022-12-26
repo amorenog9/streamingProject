@@ -47,16 +47,16 @@ object SparkReaderTable{
     val savePathEventsFromTimestamp = parametros.getString("PATH_EVENTS_FROM_TIMESTAMP")
     val pythonScriptFile = parametros.getString("PYTHON_KAFKA_PRODUCER_TIMESTAMP")
 
-
+    val kafkaDir = parametros.getString("KAFKA_DIR")
     val kafkaMessagesIn = parametros.getString("KAFKA_TOPIC_TIMESTAMP_IN")
     val kafkaMessagesOut = parametros.getString("KAFKA_TOPIC_TIMESTAMP_OUT")
 
 
-    // ----------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------------------------------
     // Llamada a funcion para este parametro query || Ojo que en flink si no es desde el principio deberiamos cambiar el CREADO EVENTO?
-    // ----------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------------------------------
 
-    //val timeStampValue = TimeUtils.getTimestampFromDate()
+    //val timeStampValue = new TimeProcessing().getTimestampFromDate()
     val timeStampValue = 1L // Llamada a funcion
 
 
@@ -66,23 +66,6 @@ object SparkReaderTable{
       .master("local[*]")
       //.master("spark://alex-GE75-Raider-8SF:7077")
       .getOrCreate()
-
-
-    /*    PRUEBAS
-    val sc = spark.sparkContext // Just used to create test RDDs
-    val rdd = sc.parallelize(
-      Seq(
-        ("first", Array(1, 2, 3), Array("A", "B", "C"), Array(Array(1,2), Array(3,4), Array(5,6)), Array("Sevilla", "Andorra", "Cadiz")),
-        ("test", Array(2, 4, 6), Array("A", "B", "C"), Array(Array(1,2), Array(3,4), Array(5,6)), Array("Sevilla", "Andorra", "Cadiz")),
-        ("choose", Array(4, 6, 8), Array("A", "B", "C"), Array(Array(1,2), Array(3,4), Array(5,6)), Array("Sevilla", "Andorra", "Cadiz")),
-        ("d", Array(-1, 0, 1), Array("A", "B", "C"), Array(Array(1,2), Array(3,4), Array(5,6)), Array("Sevilla", "Andorra", "Cadiz"))
-      )
-    )
-    val df = spark.createDataFrame(rdd).toDF("id", "date_event_memory", "event_type_memory", "coordinates_memory", "location_memory")
-
-    df.show()
-*/
-
 
     //DF que tengo de la delta table hasta el momento de la ejecución
     val df_load = spark.read
@@ -206,11 +189,6 @@ object SparkReaderTable{
     mv(savePathEventsFromTimestamp + s"/${timeStampValue}" + s"/${files.head}", savePathEventsFromTimestamp + s"/${timeStampValue}" + "/eventsFromTimestamp.json")
 
 
-    // -------------------------------------------------------------------------------------------
-    // script para limpiar el kafka topic temporal (tanto de entrada como se salida) !!!!
-    // -------------------------------------------------------------------------------------------
-
-
     // Borramos la tabla que nos proporciona las variables de entorno para python. Cada nueva llamada al script debería darnos una nueva tabla
     val pythonVariablesDeltaRoute = savePathEventsFromTimestamp + "/delta-table"
     val dir2 = new File(pythonVariablesDeltaRoute)
@@ -228,14 +206,26 @@ object SparkReaderTable{
     data.write.format("delta").save(pythonVariablesDeltaRoute)
     data.show()
 
+    // -------------------------------------------------------------------------------------------
+    // script para limpiar el kafka topic temporal (tanto de entrada como se salida)
+    // Es necesario definir el directorio de Kafka (el docker esta conectado a los puertos del PC)
+    // -------------------------------------------------------------------------------------------
+
+    s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesIn}".!
+    s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesOut}".!
+
+    s"${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesIn}".!
+    s"${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesOut}".!
+
+
 
     //Ejecutamos el script que realiza el stream de los eventos posteriores al timestamp almacenados en la BBDD
     s"python3 ${pythonScriptFile}".run() //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
 
 
-    // ----------------------------------------------------
-    // Flink procesado de eventos desde el mesages_from_timestamp para que estén procesados
-    //-----------------------------------------------------
+    // -------------------------------------------------------------------------------------
+    // Flink procesado de eventos desde el topic mesages_from_timestamp_in
+    //--------------------------------------------------------------------------------------
 
     println(s"Comienza flink-streaming en ${parametros.getString("NOMBRE_SISTEMA_TIMESTAMP")}")
 
@@ -261,7 +251,7 @@ object SparkReaderTable{
       ))
 
     val keyedEvents= trainEvent.keyBy(_.id)
-      .flatMap(new EventProcessorFromTimestamp()) // de TRAINEVENT A TRAINEVENT
+      .flatMap(new EventProcessorFromTimestamp()) // de TRAINEVENT A TRAINEVENT, no veo necesario guardar en memoria, solo su visualizacion
 
     // Sinks
     keyedEvents.print()
