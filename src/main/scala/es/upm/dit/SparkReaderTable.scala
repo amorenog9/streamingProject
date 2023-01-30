@@ -57,7 +57,7 @@ object SparkReaderTable{
     // ---------------------------------------------------------------------------------------------------------------------------------
 
     //val timeStampValue = new TimeProcessing().getTimestampFromDate()
-    val timeStampValue = 1L // Llamada a funcion
+    val timeStampValue = 1L // Llamada a funcion leyendo date event
 
 
     val spark = SparkSession
@@ -77,6 +77,7 @@ object SparkReaderTable{
     val actualTime = System.currentTimeMillis()
     println(actualTime)
 
+    println("Estado actual de la BBDD")
     df_load.show()
 
     // Eliminamos los valores actuales de la tabla. No se necesitan para nada, estan en la memoria y trabajaremos con la memoria
@@ -113,9 +114,11 @@ object SparkReaderTable{
       .withColumn(s"${lng}", col("coordinate").getItem(1)) // [lat, lng] lo transformo a lng
       .drop("coordinate")
 
+    println("Ultima actualizacion del evento hasta la fecha seleccionada")
     actualDf.show()
 
 
+    //println("Filtrado desde la fecha seleccionada sin incluise")
     // Este DF filtra desde la fecha seleccionada (sin incluirse), los eventos que tiene en memoria la tabla hasta el momento en el que se ha stremeado a la BBDD
     val df2 = df.select(col("*"), expr(s"filter(date_event_memory, x -> x > ${timeStampValue})").as("dates_from_timestamp"))
       .withColumn("index_size_from_date", size(col("date_event_memory"))-size(col("dates_from_timestamp"))+1) //el array index empieza en 1 en spark array. Esta columna nos da el indice que empezar a leer event_type_memory
@@ -130,6 +133,7 @@ object SparkReaderTable{
       .drop("location_memory")
 
     //df2.show()
+
 
 
     // Este DF desglosa los arrays (memory) en diferentes columnas y despues ordena por fecha del evento para poder streamearlo de arriba hacia abajo (como el fichero .feather)
@@ -152,6 +156,7 @@ object SparkReaderTable{
 
 
     // opcion de almacenar los eventos posteriores ordenados para enviarlos a un archivo
+    println("Lectura a partir de la fecha seleccionada desglosado y en orden")
     df3.show()
 
     // Si existe el directorio - lo borramos
@@ -222,7 +227,7 @@ object SparkReaderTable{
     //Ejecutamos el script que realiza el stream de los eventos posteriores al timestamp almacenados en la BBDD
     s"python3 ${pythonScriptFile}".run() //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
 
-
+/*
     // -------------------------------------------------------------------------------------
     // Flink procesado de eventos desde el topic mesages_from_timestamp_in
     //--------------------------------------------------------------------------------------
@@ -268,6 +273,8 @@ object SparkReaderTable{
     env.execute("Flink-Execution")
 
 
+
+ */
 
   }
 
