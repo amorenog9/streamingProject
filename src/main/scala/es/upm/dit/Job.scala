@@ -41,7 +41,7 @@ object Job{
         kafkaProperties).setStartFromEarliest()
 
       val train: DataStream[TrainEvent] = env
-        .addSource(kafkaConsumer)//.setStartFromLatest())
+        .addSource(kafkaConsumer)
         .map(jsonNode => TrainEvent(
           id = jsonNode.get(s"${userArguments.id_user}").asText(),
           event_type = jsonNode.get(s"${userArguments.event_type_user}").asText(),
@@ -61,7 +61,7 @@ object Job{
 
       // Sinks
       keyedMemoryTrains.print()
-      keyedTrains.print()
+      //keyedTrains.print()
 
       keyedMemoryTrains
         .map(_.asJson.noSpaces)

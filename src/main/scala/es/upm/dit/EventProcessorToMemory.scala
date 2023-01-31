@@ -11,6 +11,13 @@ class EventProcessorToMemory extends RichFlatMapFunction[TrainEvent, TrainEventM
 
   private var trainMemoryState: ValueState[TrainEventMemory] = _
 
+
+  /*
+    * Funcion de TrainEvent -> TrainEventMemory => guarda array de memoria
+    * Filtra los BIN
+    * Agrupa los eventos por su clave -> los guarda en memoria
+   */
+
   override def flatMap(input: TrainEvent, out: Collector[TrainEventMemory]): Unit = {
 
     // access the state value

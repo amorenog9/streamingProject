@@ -11,6 +11,12 @@ class EventProcessor extends RichFlatMapFunction[TrainEvent, TrainEvent] {
 
   private var trainMemoryState2: ValueState[TrainEvent] = _
 
+
+  /*
+    * Funcion de TrainEvent -> TrainEvent => No guarda array de memoria
+    * Filtra los BIN
+   */
+
   override def flatMap(input: TrainEvent, out: Collector[TrainEvent]): Unit = {
 
     // access the state value
