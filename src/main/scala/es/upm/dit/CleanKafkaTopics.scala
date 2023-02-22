@@ -24,6 +24,11 @@ object CleanKafkaTopics{
     val messages_from_timestamp_out = "messages_from_timestamp_out"
 
 
+    "pkill -f TemporalStreamProducer.py".!
+    "pkill -f TemporalStreamConsumer.py".!
+    "pkill -f producer.py".!
+    "pkill -f consumer.py".!
+
 
     s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${messages_in}".!
     s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${messages_out}".!

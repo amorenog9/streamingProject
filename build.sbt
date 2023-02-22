@@ -45,9 +45,11 @@ val Dependencies = Seq(
 
 
 )
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", _*) => MergeStrategy.discard
+  case _                        => MergeStrategy.first
+}
 
-javacOptions ++= Seq("-target", "1.8")
-scalacOptions ++= Seq( "-target:jvm-1.8", "-language:postfixOps")
 
 
 lazy val root = (project in file(".")).
@@ -55,17 +57,10 @@ lazy val root = (project in file(".")).
     libraryDependencies ++= Dependencies
   )
 
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", _*) => MergeStrategy.discard
+  case _                        => MergeStrategy.first
+}
+
 assembly / mainClass := Some("es.upm.dit.Job")
 
-// make run command include the provided dependencies
-Compile / run  := Defaults.runTask(Compile / fullClasspath,
-  Compile / run / mainClass,
-  Compile / run / runner
-).evaluated
-
-// stays inside the sbt console when we press "ctrl-c" while a Flink programme executes with "run" or "runMain"
-Compile / run / fork := true
-Global / cancelable := true
-
-// exclude Scala library from assembly
-assembly / assemblyOption  := (assembly / assemblyOption).value.copy(includeScala = false)

@@ -3,10 +3,21 @@ package es.upm.dit
 import scala.util.matching.Regex
 
 class TimeProcessing {
+  def getTimestampFromDate(hour: String, date: String): Long = {
+    var desiredTime: String = ""
 
-  //val desiredTime = "01/02/2017 18:00:00" //Input de usuario
-  // Se podría dividir en mas campos
-def getTimestampFromDate(): Long ={
+    desiredTime = date + " " + hour
+
+    val format = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss")
+    val time = format.parse(desiredTime).getTime()
+    return time
+
+  }
+
+}
+
+  /*
+def getTimestampFromDateUserArgs(): Long ={
     var dateCheck: Boolean = false
     var hourCheck: Boolean = false
 
@@ -43,6 +54,6 @@ def getTimestampFromDate(): Long ={
 
     return time
     }
-
-
 }
+ */
+

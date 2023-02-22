@@ -23,6 +23,7 @@ object Job{
     val parametros = ConfigFactory.load("applicationTrain.conf")
     val KAFKA_TOPIC_IN = parametros.getString("KAFKA_TOPIC_IN")
     val KAFKA_TOPIC_OUT = parametros.getString("KAFKA_TOPIC_OUT")
+    val KAFKA_TOPIC_OUT_NO_MEMORY = parametros.getString("KAFKA_TOPIC_OUT_NO_MEMORY")
 
 
     val userArguments = new UserPrompt().getPromptArgs(parametros) // para introducir los parametros por el terminal
@@ -74,7 +75,7 @@ object Job{
         .map(_.asJson.noSpaces)
         .addSink(new FlinkKafkaProducer[String](
           parametros.getString("KAFKA_DIRECTION_OUT"),
-          "messages_out_no_memory",
+          KAFKA_TOPIC_OUT_NO_MEMORY,
           new SimpleStringSchema))
 
 

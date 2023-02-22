@@ -1,23 +1,14 @@
 package es.upm.dit
 
 import com.typesafe.config.ConfigFactory
-import es.upm.dit.struct.{TrainEvent, TrainEventMemory}
 import org.apache.commons.io.FileUtils
-import org.apache.flink.api.common.serialization.SimpleStringSchema
-import org.apache.flink.formats.json.JsonNodeDeserializationSchema
-import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
-import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.{SparkSession, functions}
 import org.apache.spark.sql.functions.{arrays_zip, col, explode, expr, flatten, size}
 
 import java.io.File
-import java.util.Properties
 import util.Try
 import sys.process._
-import org.apache.flink.streaming.api.scala._
-import io.circe.generic.auto._
-import io.circe.syntax._
 
 import java.lang.Thread.sleep
 
@@ -25,12 +16,30 @@ import java.lang.Thread.sleep
 
 object SparkReaderTable{
 
+  def getTimestampFromDate(hour: String, date: String): Long = {
+    var desiredTime: String = ""
+
+    desiredTime = date + " " + hour
+
+    val format = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss")
+    val time = format.parse(desiredTime).getTime()
+    return time
+
+  }
+
 
   def main(args: Array[String]) {
 
     // Quitamos los mensajes de Info
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
+
+
+    // Parametros que vienen de dashboard
+    val hour = args(0) // hh:mm:ss
+    val date = args(1) // dd/mm/yyyy
+    //val hour = "09:56:23"
+    //val date = "28/01/2019"
 
     // Config PARAMETERS
     val parametros = ConfigFactory.load("applicationTrain.conf")
@@ -48,16 +57,18 @@ object SparkReaderTable{
     val pythonScriptFile = parametros.getString("PYTHON_KAFKA_PRODUCER_TIMESTAMP")
 
     val kafkaDir = parametros.getString("KAFKA_DIR")
-    val kafkaMessagesIn = parametros.getString("KAFKA_TOPIC_TIMESTAMP_IN")
     val kafkaMessagesOut = parametros.getString("KAFKA_TOPIC_TIMESTAMP_OUT")
 
 
+
     // ---------------------------------------------------------------------------------------------------------------------------------
-    // Llamada a funcion para este parametro query || Ojo que en flink si no es desde el principio deberiamos cambiar el CREADO EVENTO?
+    // Llamada a funcion para este parametro query
     // ---------------------------------------------------------------------------------------------------------------------------------
 
-    //val timeStampValue = new TimeProcessing().getTimestampFromDate()
-    val timeStampValue = 1L // Llamada a funcion leyendo date event
+
+    val timeStampValue = new TimeProcessing().getTimestampFromDate(hour, date) //funcion que pasa de date a millis
+    //println(timeStampValue)
+    //val timeStampValue = 1484915460000L // Llamada a funcion leyendo date event
 
 
     val spark = SparkSession
@@ -155,9 +166,11 @@ object SparkReaderTable{
       .orderBy(s"${date_event}") //antes de enviar la tabla a JSON -> la ordenamos para que se haga el stream correctamente
 
 
-    // opcion de almacenar los eventos posteriores ordenados para enviarlos a un archivo
     println("Lectura a partir de la fecha seleccionada desglosado y en orden")
     df3.show()
+
+
+    // Almacen de eventos desde la fecha seleccionada en archivo JSON
 
     // Si existe el directorio - lo borramos
     val dir = new File(savePathEventsFromTimestamp + s"/${timeStampValue}")
@@ -194,12 +207,16 @@ object SparkReaderTable{
     mv(savePathEventsFromTimestamp + s"/${timeStampValue}" + s"/${files.head}", savePathEventsFromTimestamp + s"/${timeStampValue}" + "/eventsFromTimestamp.json")
 
 
-    // Borramos la tabla que nos proporciona las variables de entorno para python. Cada nueva llamada al script debería darnos una nueva tabla
-    val pythonVariablesDeltaRoute = savePathEventsFromTimestamp + "/delta-table"
-    val dir2 = new File(pythonVariablesDeltaRoute)
+
+    // Variables de entorno (actualTimestamp - ruta fichero) para que las pueda leer fichero python
+
+    // Borramos la carpeta que nos proporciona las variables de entorno para python. Cada nueva llamada al script debería darnos un nuevo fichero JSON
+    val pythonVariablesRoute = savePathEventsFromTimestamp + "/variables_python"
+    val dir2 = new File(pythonVariablesRoute)
     if (dir2.exists()) FileUtils.deleteDirectory(dir2) // Cuidado con este
 
-    // Creamos una delta table para enviar a python los parametros timestamp y localizacion del fichero
+
+    // Creamos un df para enviar a python los parametros timestamp y localizacion fichero a través de fichero json
     val sc = spark.sparkContext
     val routeToFile = savePathEventsFromTimestamp + s"/${timeStampValue}"
     val rdd = sc.parallelize(
@@ -208,73 +225,39 @@ object SparkReaderTable{
       )
     )
     val data = spark.createDataFrame(rdd).toDF("actualTime", "routeToFile")
-    data.write.format("delta").save(pythonVariablesDeltaRoute)
     data.show()
 
+    data.coalesce(1).write.format("json").save(pythonVariablesRoute)
+
+    // Buscamos por el unico archivo .json que hay en la carpeta para luego cambiarle el nombre
+    val variablesName: String = ".+\\.json"
+    val variablesFile = getListOfFiles(pythonVariablesRoute)
+      .map(f => f.getName)
+      .filter(_.matches(variablesName))
+
+    // Renombramos el archivo
+    mv(pythonVariablesRoute + s"/${variablesFile.head}", pythonVariablesRoute + "/variables.json")
+
+
+
+    // Terminamos la ejecucion de Temporal consumer/producer
+    "pkill -f TemporalStreamConsumer.py".!
+    "pkill -f TemporalStreamProducer.py".!
+
     // -------------------------------------------------------------------------------------------
-    // script para limpiar el kafka topic temporal (tanto de entrada como se salida)
+    // Limpieza de topic de Kafka con cada nueva llamada
     // Es necesario definir el directorio de Kafka (el docker esta conectado a los puertos del PC)
     // -------------------------------------------------------------------------------------------
 
-    s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesIn}".!
     s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesOut}".!
-
-    s"${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesIn}".!
     s"${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesOut}".!
 
-
-
-    //Ejecutamos el script que realiza el stream de los eventos posteriores al timestamp almacenados en la BBDD
-    s"python3 ${pythonScriptFile}".run() //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
-
-/*
     // -------------------------------------------------------------------------------------
-    // Flink procesado de eventos desde el topic mesages_from_timestamp_in
+    // Llamada a ficheros python para producir nuevos mensajes a partir de un timestamp
     //--------------------------------------------------------------------------------------
 
-    println(s"Comienza flink-streaming en ${parametros.getString("NOMBRE_SISTEMA_TIMESTAMP")}")
+    s"python3 ${pythonScriptFile}".run() //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
 
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
-    val kafkaProperties = new Properties()
-    kafkaProperties.setProperty("bootstrap.servers", parametros.getString("KAFKA_DIRECTION_IN"))
-    kafkaProperties.setProperty("group.id", "test")
-
-    val kafkaConsumer2 = new FlinkKafkaConsumer(
-      kafkaMessagesIn,
-      new JsonNodeDeserializationSchema(), //deserializes a JSON String into an ObjectNode.
-      kafkaProperties).setStartFromEarliest()
-
-    val trainEvent: DataStream[TrainEvent] = env
-      .addSource(kafkaConsumer2) //.setStartFromLatest())
-      .map(jsonNode => TrainEvent(
-        id = jsonNode.get(s"${id}").asText(),
-        event_type = jsonNode.get(s"${event_type}").asText(),
-        date_event = jsonNode.get(s"${date_event}").asLong(), // fecha en epoch milliseconds
-        lat = jsonNode.get(s"${lat}").asDouble(),
-        lng = jsonNode.get(s"${lng}").asDouble(),
-        location = jsonNode.get(s"${location}").asText()
-      ))
-
-    val keyedEvents= trainEvent.keyBy(_.id)
-      .flatMap(new EventProcessorFromTimestamp()) // de TRAINEVENT A TRAINEVENT, no veo necesario guardar en memoria, solo su visualizacion
-
-    // Sinks
-    keyedEvents.print()
-
-
-    keyedEvents
-      .map(_.asJson.noSpaces)
-      .addSink(new FlinkKafkaProducer[String](
-        parametros.getString("KAFKA_DIRECTION_OUT"),
-        kafkaMessagesOut,
-        new SimpleStringSchema))
-
-
-    env.execute("Flink-Execution")
-
-
-
- */
 
   }
 
