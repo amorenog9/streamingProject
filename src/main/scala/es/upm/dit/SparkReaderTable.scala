@@ -16,16 +16,6 @@ import java.lang.Thread.sleep
 
 object SparkReaderTable{
 
-  def getTimestampFromDate(hour: String, date: String): Long = {
-    var desiredTime: String = ""
-
-    desiredTime = date + " " + hour
-
-    val format = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss")
-    val time = format.parse(desiredTime).getTime()
-    return time
-
-  }
 
 
   def main(args: Array[String]) {
@@ -60,12 +50,23 @@ object SparkReaderTable{
     val kafkaMessagesOut = parametros.getString("KAFKA_TOPIC_TIMESTAMP_OUT")
 
 
+    // Terminamos la ejecucion de Temporal consumer/producer
+    "pkill -f TemporalStreamConsumer.py".!
+    "pkill -f TemporalStreamProducer.py".!
+
+    // -------------------------------------------------------------------------------------------
+    // Limpieza de topic de Kafka con cada nueva llamada
+    // Es necesario definir el directorio de Kafka (el docker esta conectado a los puertos del PC)
+    // -------------------------------------------------------------------------------------------
+
+    s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesOut}".!
+    s"${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesOut}".!
+
+
 
     // ---------------------------------------------------------------------------------------------------------------------------------
     // Llamada a funcion para este parametro query
     // ---------------------------------------------------------------------------------------------------------------------------------
-
-
     val timeStampValue = new TimeProcessing().getTimestampFromDate(hour, date) //funcion que pasa de date a millis
     //println(timeStampValue)
     //val timeStampValue = 1484915460000L // Llamada a funcion leyendo date event
@@ -237,20 +238,6 @@ object SparkReaderTable{
 
     // Renombramos el archivo
     mv(pythonVariablesRoute + s"/${variablesFile.head}", pythonVariablesRoute + "/variables.json")
-
-
-
-    // Terminamos la ejecucion de Temporal consumer/producer
-    "pkill -f TemporalStreamConsumer.py".!
-    "pkill -f TemporalStreamProducer.py".!
-
-    // -------------------------------------------------------------------------------------------
-    // Limpieza de topic de Kafka con cada nueva llamada
-    // Es necesario definir el directorio de Kafka (el docker esta conectado a los puertos del PC)
-    // -------------------------------------------------------------------------------------------
-
-    s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesOut}".!
-    s"${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesOut}".!
 
     // -------------------------------------------------------------------------------------
     // Llamada a ficheros python para producir nuevos mensajes a partir de un timestamp
