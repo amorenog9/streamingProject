@@ -28,8 +28,10 @@ object SparkReaderTable{
     // Parametros que vienen de dashboard
     val hour = args(0) // hh:mm:ss
     val date = args(1) // dd/mm/yyyy
-    //val hour = "09:56:23"
-    //val date = "28/01/2019"
+    val selectedID = args(2) // 2020-17-02
+    //val hour = "14:59:00" // es localDate
+    //val date = "01/02/2017"
+    //val selectedID = "412062017-01-19"
 
     // Config PARAMETERS
     val parametros = ConfigFactory.load("applicationTrain.conf")
@@ -149,7 +151,7 @@ object SparkReaderTable{
 
 
     // Este DF desglosa los arrays (memory) en diferentes columnas y despues ordena por fecha del evento para poder streamearlo de arriba hacia abajo (como el fichero .feather)
-    val df3 = df2.withColumn("zip_values", functions.expr("arrays_zip( dates_from_timestamp, events_from_timestamp, coordinates_from_timestamp, locations_from_timestamp) "))
+    var df3 = df2.withColumn("zip_values", functions.expr("arrays_zip( dates_from_timestamp, events_from_timestamp, coordinates_from_timestamp, locations_from_timestamp) "))
       .withColumn("zip_values", functions.expr("explode(zip_values)"))
       .drop("dates_from_timestamp")
       .drop("events_from_timestamp")
@@ -168,8 +170,14 @@ object SparkReaderTable{
 
 
     println("Lectura a partir de la fecha seleccionada desglosado y en orden")
-    df3.show()
+    //df3.show()
 
+    // Condicion para filtrar si el usuario ha introducido un ID concreto para filtrado de eventos
+    if (selectedID != ""){
+      df3 = df3.filter((df3("id") === s"${selectedID}"))
+      println("Se ha seleccionado un id concreto para analizar")
+    }
+    df3.show()
 
     // Almacen de eventos desde la fecha seleccionada en archivo JSON
 
@@ -222,10 +230,10 @@ object SparkReaderTable{
     val routeToFile = savePathEventsFromTimestamp + s"/${timeStampValue}"
     val rdd = sc.parallelize(
       Seq(
-        (actualTime, routeToFile)
+        (actualTime, routeToFile, selectedID)
       )
     )
-    val data = spark.createDataFrame(rdd).toDF("actualTime", "routeToFile")
+    val data = spark.createDataFrame(rdd).toDF("actualTime", "routeToFile", "selectedID")
     data.show()
 
     data.coalesce(1).write.format("json").save(pythonVariablesRoute)
