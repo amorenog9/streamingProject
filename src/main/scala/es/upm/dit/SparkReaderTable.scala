@@ -30,8 +30,8 @@ object SparkReaderTable{
     val date = args(1) // dd/mm/yyyy
     val selectedID = args(2) // 2020-17-02
     //val hour = "14:59:00" // es localDate
-    //val date = "01/02/2017"
-    //val selectedID = "412062017-01-19"
+    //val date = "01/02/1999"
+    //val selectedID = ""
 
     // Config PARAMETERS
     val parametros = ConfigFactory.load("applicationTrain.conf")
@@ -173,7 +173,7 @@ object SparkReaderTable{
     //df3.show()
 
     // Condicion para filtrar si el usuario ha introducido un ID concreto para filtrado de eventos
-    if (selectedID != ""){
+    if (selectedID != "no-id"){
       df3 = df3.filter((df3("id") === s"${selectedID}"))
       println("Se ha seleccionado un id concreto para analizar")
     }
