@@ -30,8 +30,8 @@ object SparkReaderTable{
     val date = args(1) // dd/mm/yyyy
     val selectedID = args(2) // 2020-17-02
     //val hour = "14:59:00" // es localDate
-    //val date = "01/02/1999"
-    //val selectedID = ""
+    //val date = "01/01/2020"
+    //val selectedID = "no-id"
 
     // Config PARAMETERS
     val parametros = ConfigFactory.load("applicationTrain.conf")
@@ -230,10 +230,10 @@ object SparkReaderTable{
     val routeToFile = savePathEventsFromTimestamp + s"/${timeStampValue}"
     val rdd = sc.parallelize(
       Seq(
-        (actualTime, routeToFile, selectedID)
+        (actualTime, routeToFile, selectedID, timeStampValue)
       )
     )
-    val data = spark.createDataFrame(rdd).toDF("actualTime", "routeToFile", "selectedID")
+    val data = spark.createDataFrame(rdd).toDF("actualTime", "routeToFile", "selectedID", "timeStampValue")
     data.show()
 
     data.coalesce(1).write.format("json").save(pythonVariablesRoute)
