@@ -59,7 +59,7 @@ object SparkReaderTable{
     // -------------------------------------------------------------------------------------------
     // Limpieza de topic de Kafka con cada nueva llamada
     // Es necesario definir el directorio de Kafka (el docker esta conectado a los puertos del PC)
-    // -------------------------------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------
 
     s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesOut}".!
     s"${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesOut}".!
