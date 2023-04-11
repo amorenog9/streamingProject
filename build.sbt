@@ -3,7 +3,7 @@ ThisBuild / resolvers ++= Seq(
   Resolver.mavenLocal
 )
 
-name := "flinkProject"
+name := "streamingProject"
 
 version := "0.1"
 
@@ -40,7 +40,10 @@ val Dependencies = Seq(
   "org.apache.spark" %% "spark-sql-kafka-0-10" % sparkVersion,
 
   //Delta
-  "io.delta" %% "delta-core" % deltaVersion
+  "io.delta" %% "delta-core" % deltaVersion,
+
+  // Akka para KafkaSparkWriter .jar
+  "com.typesafe.akka" %% "akka-stream" % "2.5.32"
 
 
 
@@ -62,5 +65,4 @@ assemblyMergeStrategy in assembly := {
   case _                        => MergeStrategy.first
 }
 
-assembly / mainClass := Some("es.upm.dit.Job")
 

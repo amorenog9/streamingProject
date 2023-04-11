@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/flinkProject.iml" filepath="$PROJECT_DIR$/.idea/modules/flinkProject.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/flinkProject-build.iml" filepath="$PROJECT_DIR$/.idea/modules/flinkProject-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/streamingProject.iml" filepath="$PROJECT_DIR$/.idea/modules/streamingProject.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/streamingProject-build.iml" filepath="$PROJECT_DIR$/.idea/modules/streamingProject-build.iml" />
     </modules>
   </component>
 </project>
