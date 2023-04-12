@@ -46,9 +46,19 @@ object SparkReaderTable{
     val location= parametros.getString("localizacionEvento").toLowerCase()
 
     val savePathEventsFromTimestamp = parametros.getString("PATH_EVENTS_FROM_TIMESTAMP")
-    val pythonScriptFile = parametros.getString("PYTHON_KAFKA_PRODUCER_TIMESTAMP")
 
-    val kafkaDir = parametros.getString("KAFKA_DIR")
+    // Definicion de produccion en local o distribuida
+    val tipoProd = parametros.getString("TIPO_PROD")
+    var kafkaDir = ""
+    var pythonScriptFile = ""
+    if (tipoProd == "local") {
+      kafkaDir = parametros.getString("KAFKA_DIR")
+      pythonScriptFile = parametros.getString("PYTHON_KAFKA_PRODUCER_TIMESTAMP")
+    } else {
+      kafkaDir = parametros.getString("KAFKA_DIR_REMOTE")
+      pythonScriptFile = parametros.getString("PYTHON_KAFKA_PRODUCER_TIMESTAMP_REMOTE")
+    }
+
     val kafkaMessagesOut = parametros.getString("KAFKA_TOPIC_TIMESTAMP_OUT")
 
 
@@ -61,9 +71,13 @@ object SparkReaderTable{
     // Es necesario definir el directorio de Kafka (el docker esta conectado a los puertos del PC)
     // --------------------------------------------------------------------------------------------
 
+    if (tipoProd == "local") {
     s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesOut}".!
     s"${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesOut}".!
-
+    } else {
+      s"docker exec -it kafka ${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesOut}".!
+      s"docker exec -it kafka ${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesOut}".!
+    }
 
 
     // ---------------------------------------------------------------------------------------------------------------------------------
@@ -250,9 +264,11 @@ object SparkReaderTable{
     // -------------------------------------------------------------------------------------
     // Llamada a ficheros python para producir nuevos mensajes a partir de un timestamp
     //--------------------------------------------------------------------------------------
-
-    s"python3 ${pythonScriptFile}".run() //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
-
+    if (tipoProd == "local") {
+      s"python3 ${pythonScriptFile}".run() //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
+    }else{
+      s"docker exec -it python python3 ${pythonScriptFile}".run() //con ! bloqueamos hasta que termine de enviarse lo del script; con run se paraleliza https://www.scala-lang.org/files/archive/api/current/scala/sys/process/ProcessBuilder.html
+    }
 
   }
 

@@ -17,7 +17,16 @@ object CleanKafkaTopics{
 
     // Config
     val parametros = ConfigFactory.load("applicationTrain.conf")
-    val kafkaDir = parametros.getString("KAFKA_DIR")
+    val tipoProd = parametros.getString("TIPO_PROD")
+
+    var kafkaDir = ""
+    if(tipoProd == "local") {
+       kafkaDir = parametros.getString("KAFKA_DIR")
+    }else{
+       kafkaDir = parametros.getString("KAFKA_DIR_REMOTE")
+    }
+
+
     val messages_in = "messages_in"
     val messages_out = "messages_out"
     val messages_out_no_memory = "messages_out_no_memory"
