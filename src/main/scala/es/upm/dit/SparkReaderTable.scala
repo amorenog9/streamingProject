@@ -63,8 +63,13 @@ object SparkReaderTable{
 
 
     // Terminamos la ejecucion de Temporal consumer/producer
-    "pkill -f TemporalStreamConsumer.py".!
-    "pkill -f TemporalStreamProducer.py".!
+    if (tipoProd == "local") {
+      "pkill -f TemporalStreamConsumer.py".!
+      "pkill -f TemporalStreamProducer.py".!
+    }else{
+      "curl http://localhost:5005/kill/TemporalStreamConsumer.py".!
+      "curl http://localhost:5005/kill/TemporalStreamProducer.py".!
+    }
 
     // -------------------------------------------------------------------------------------------
     // Limpieza de topic de Kafka con cada nueva llamada
