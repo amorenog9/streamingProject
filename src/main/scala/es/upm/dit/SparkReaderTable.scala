@@ -36,6 +36,7 @@ object SparkReaderTable{
     // Config PARAMETERS
     val parametros = ConfigFactory.load("applicationTrain.conf")
 
+    val pathEvents = parametros.getString("DIR_EVENTS")
     val pathTable = parametros.getString("TRAIN_DIR_TABLE")
 
     val id = parametros.getString("idEvento").toLowerCase()
@@ -265,6 +266,9 @@ object SparkReaderTable{
 
     // Renombramos el archivo
     mv(pythonVariablesRoute + s"/${variablesFile.head}", pythonVariablesRoute + "/variables.json")
+
+
+    s"chmod -R 777 ${pathEvents}".! //cambiamos permisos de lectura y escritura para toda la carpeta /tmp/events
 
     // -------------------------------------------------------------------------------------
     // Llamada a ficheros python para producir nuevos mensajes a partir de un timestamp
