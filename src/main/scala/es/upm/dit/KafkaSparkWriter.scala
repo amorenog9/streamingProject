@@ -149,9 +149,7 @@ object KafkaSparkWriter{
         .execute()
     }
 
-    s"chmod -R 777 ${pathEvents}".! //cambiamos los permisos de lectura y escritura de /tmp/events y sus subcarpetas
 
-    println(s"Comenzamos a almacenar los eventos en la tabla Delta a traves de los mensajes que vienen del topic ${KAFKA_TOPIC_OUT}")
 
     val query = ds
       .writeStream
@@ -161,6 +159,10 @@ object KafkaSparkWriter{
       //.outputMode("append")
       .option("checkpointLocation", new File(pathCheckpoint).getCanonicalPath)
       .start(path)
+
+    s"chmod -R 777 ${pathEvents}".! //cambiamos los permisos de lectura y escritura de /tmp/events y sus subcarpetas
+    println(s"Comenzamos a almacenar los eventos en la tabla Delta a traves de los mensajes que vienen del topic ${KAFKA_TOPIC_OUT}")
+
 
     query.awaitTermination()
 
