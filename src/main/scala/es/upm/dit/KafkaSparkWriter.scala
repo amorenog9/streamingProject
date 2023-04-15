@@ -11,6 +11,8 @@ import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession, functions}
 
 import java.io.File
 
+import sys.process._
+
 
 object KafkaSparkWriter{
 
@@ -23,6 +25,7 @@ object KafkaSparkWriter{
     // Config
     val parametros = ConfigFactory.load("applicationTrain.conf")
     val KAFKA_TOPIC_OUT = parametros.getString("KAFKA_TOPIC_OUT")
+    val pathEvents = parametros.getString("DIR_EVENTS") // necesario para cambiar permisos chmod en /tmp/events
     val pathTrain = parametros.getString("TRAIN_DIR")
     val pathTable = parametros.getString("TRAIN_DIR_TABLE")
     val pathCheckpoint = parametros.getString("TRAIN_DIR_CHECKPOINT")
@@ -44,6 +47,7 @@ object KafkaSparkWriter{
     // Borramos las trazas pasadas las tablas y checkpoints
     val dir = new File(pathTrain)
     if (dir.exists()) FileUtils.deleteDirectory(dir) // Cuidado con este
+
 
     // Creamos una nueva ruta para almacenar la tabla
     val path = new File(pathTable).getAbsolutePath //directorio donde se va a almacenar la tabla
@@ -144,6 +148,8 @@ object KafkaSparkWriter{
         .whenNotMatched().insertAll() //si no hay fila con ese id => inserta la fila
         .execute()
     }
+
+    s"chmod -R 777 ${pathEvents}".! //cambiamos los permisos de lectura y escritura de /tmp/events y sus subcarpetas
 
     println(s"Comenzamos a almacenar los eventos en la tabla Delta a traves de los mensajes que vienen del topic ${KAFKA_TOPIC_OUT}")
 
