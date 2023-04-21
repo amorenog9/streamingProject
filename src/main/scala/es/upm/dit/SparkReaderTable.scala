@@ -28,10 +28,17 @@ object SparkReaderTable{
     // Parametros que vienen de dashboard
     val hour = args(0) // hh:mm:ss
     val date = args(1) // dd/mm/yyyy
-    val selectedID = args(2) // 2020-17-02
+    val selectedID = args(2) // "412062017-01-17,492762020-01-17,492142020-02-21"
     //val hour = "14:59:00" // es localDate
-    //val date = "01/01/2020"
-    //val selectedID = "no-id"
+    //val date = "01/01/2016"
+    //val selectedID = "412062017-01-17,492762020-01-17,492142020-02-20"
+
+
+    val selectedIDArray = selectedID.split(",")
+
+
+
+
 
     // Config PARAMETERS
     val parametros = ConfigFactory.load("applicationTrain.conf")
@@ -193,10 +200,17 @@ object SparkReaderTable{
     //df3.show()
 
     // Condicion para filtrar si el usuario ha introducido un ID concreto para filtrado de eventos
-    if (selectedID != "no-id"){
-      df3 = df3.filter((df3("id") === s"${selectedID}"))
-      println("Se ha seleccionado un id concreto para analizar")
+    //if (selectedID != "no-id"){
+    //  df3 = df3.filter((df3("id") === s"${selectedID}"))
+    //  println("Se ha seleccionado un id concreto para analizar")
+    //}
+    if (selectedID != "no-id") {
+      df3 = df3.filter(col("id").isin(selectedIDArray: _*))
+      println("Se han seleccionado los siguientes IDs para analizar: " + selectedIDArray.mkString(", "))
     }
+
+
+
     df3.show()
 
     // Almacen de eventos desde la fecha seleccionada en archivo JSON
