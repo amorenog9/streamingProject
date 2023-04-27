@@ -17,7 +17,7 @@ object CleanKafkaTopics{
 
     // Config
     val parametros = ConfigFactory.load("applicationTrain.conf")
-    val tipoProd = parametros.getString("TIPO_PROD")
+    val tipoProd = "local"
 
     var kafkaDir = ""
     if(tipoProd == "local") {
