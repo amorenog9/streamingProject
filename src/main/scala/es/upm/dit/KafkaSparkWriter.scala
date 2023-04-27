@@ -57,9 +57,7 @@ object KafkaSparkWriter{
       .builder
       .appName("Kafka2Delta")
       //.master("local[*]") // si es en distrib, quitar esta linea
-      .config("spark.executor.memory", "1g")
       .config("spark.executor.cores", "1")
-      .config("spark.driver.memory", "1g")
       .getOrCreate()
     import spark.implicits._
 
