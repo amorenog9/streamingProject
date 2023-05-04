@@ -56,7 +56,7 @@ object KafkaSparkWriter{
     val spark = SparkSession
       .builder
       .appName("Kafka2Delta")
-      //.master("local[*]") // si es en distrib, quitar esta linea
+      .master("local[*]") // si es en distrib, quitar esta linea
       .getOrCreate()
     import spark.implicits._
 

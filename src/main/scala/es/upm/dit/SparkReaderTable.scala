@@ -104,7 +104,7 @@ object SparkReaderTable{
     val spark = SparkSession
       .builder
       .appName("DeltaReader")
-      //.master("local[*]")  // si es en distrib, quitar esta linea
+      .master("local[*]")  // si es en distrib, quitar esta linea
       //.master("spark://alex-GE75-Raider-8SF:7077")
       .getOrCreate()
 
