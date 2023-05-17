@@ -63,7 +63,7 @@ object KafkaSparkWriter{
     // Leemos eventos del topic de Kafka
     val df = spark.readStream
       .format("kafka")
-      .option("kafka.bootstrap.servers", "localhost:9092")
+      .option("kafka.bootstrap.servers", "kafka:9092")
       .option("subscribe", KAFKA_TOPIC_OUT)
       .option("startingOffsets", "earliest")
       .option("failOnDataLoss", "false")
