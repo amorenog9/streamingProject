@@ -88,8 +88,8 @@ object SparkReaderTable{
     s"${kafkaDir}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic ${kafkaMessagesOut}".!
     s"${kafkaDir}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic ${kafkaMessagesOut}".!
     } else {
-      s"curl http://kafkamanager:5004/delete/${kafkaMessagesOut}".!
-      s"curl http://kafkamanager:5004/create/${kafkaMessagesOut}".!
+      s"curl http://kafkamanager:5008/delete/${kafkaMessagesOut}".!
+      s"curl http://kafkamanager:5008/create/${kafkaMessagesOut}".!
     }
 
 
